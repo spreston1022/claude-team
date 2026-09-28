@@ -15,8 +15,6 @@ interface PromptAuditLogOptions {
   maxPromptChars?: number;
   /** Drop the `<system-reminder>` blocks Claude Code adds to user turns. */
   excludeSystemReminders?: boolean;
-  /** Maps Claude account UUIDs to emails, since requests carry only the UUID. */
-  accountDirectory?: Record<string, string>;
 }
 
 interface ContentBlock {
@@ -42,7 +40,6 @@ export default async function promptAuditLog(
     logPromptText = true,
     maxPromptChars = 4000,
     excludeSystemReminders = true,
-    accountDirectory = {},
   } = options;
 
   if (request.method !== "POST" || !new URL(request.url).pathname.endsWith("/v1/messages")) {
@@ -86,9 +83,8 @@ export default async function promptAuditLog(
     // per person, this is the person.
     gatewayUser: request.user?.sub ?? null,
     // The Claude account behind the forwarded login, as reported by the
-    // client. Stable per person; map it to an email with accountDirectory.
+    // client. Stable per person.
     claudeAccountUuid: claudeUser.accountUuid,
-    claudeAccountEmail: accountDirectory[claudeUser.accountUuid ?? ""] ?? null,
     claudeDeviceId: claudeUser.deviceId,
     sessionId: headers.get("x-claude-code-session-id"),
     agentId: headers.get("x-claude-code-agent-id"),

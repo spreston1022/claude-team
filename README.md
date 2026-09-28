@@ -126,9 +126,7 @@ two identities:
 - `claudeAccountUuid`: the Claude account ID that Claude Code sends in the
   request's `metadata.user_id`. It identifies the person behind a shared app
   key, but the client reports it and the gateway can't verify it. Requests
-  carry only the ID, so list ID-to-email pairs in the `accountDirectory`
-  option to also log `claudeAccountEmail`. Each user's ID is `accountUuid`
-  under `oauthAccount` in their `~/.claude.json`.
+  carry only the ID, not an email.
 
 Tool-result turns are logged without their content. The `Authorization`
 header, which carries the user's Claude login, is never read or logged. Set
