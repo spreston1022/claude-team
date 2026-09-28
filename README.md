@@ -100,6 +100,22 @@ rule. A session isn't a person: restarting Claude Code starts a new session
 with a fresh budget, so use one app per user for per-person limits. Add the
 metering policy to the app's policy chain to turn this on.
 
+The same metering policy also gives each Claude account its own budget,
+even when everyone shares one app key. `claude-user-context-inbound` copies the
+Claude account UUID from the request's `metadata.user_id` to
+`context.custom.claudeAccountUuid`, and a budget rule keyed on that expression
+warns at 1,000 and blocks at 2,000 requests per account per hour, and blocks at
+15,000 per day. Add both `claude-user-context-inbound` and the metering policy
+to the app's policy chain. The limits are placeholders; tune them to observed
+usage. Caveats:
+
+- Claude Code reports the UUID and the gateway can't verify it. A user who
+  edits it gets a fresh budget, so treat this as a guardrail for well-meaning
+  users, not enforcement. One app per person gives a limit users can't evade.
+- Requests without the UUID skip this rule. `metadata.user_id` isn't in
+  Anthropic's gateway documentation, so a future Claude Code release could
+  change or drop it.
+
 `prompt-audit-log-inbound` (`modules/prompt-audit-log.ts`) logs who sent each
 Claude Code request and, when a person typed a prompt, its text. Place it after
 the auth policy and after DLP, so it logs masked text. Each log entry records

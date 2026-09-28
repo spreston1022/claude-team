@@ -74,6 +74,30 @@
                   "action": "block"
                 }
               ]
+            },
+            {
+              "budgetBy": "expression",
+              "expression": "context.custom.claudeAccountUuid",
+              "meters": [
+                {
+                  "meter": "requests",
+                  "period": "hourly",
+                  "value": 1000,
+                  "action": "warn"
+                },
+                {
+                  "meter": "requests",
+                  "period": "hourly",
+                  "value": 2000,
+                  "action": "block"
+                },
+                {
+                  "meter": "requests",
+                  "period": "daily",
+                  "value": 15000,
+                  "action": "block"
+                }
+              ]
             }
           ]
         }
@@ -229,6 +253,15 @@
       },
       "name": "ai-gateway-smart-router-inbound",
       "policyType": "ai-gateway-smart-router"
+    },
+    {
+      "handler": {
+        "export": "default",
+        "module": "$import(./modules/claude-user-context-inbound)",
+        "options": {}
+      },
+      "name": "claude-user-context-inbound",
+      "policyType": "custom-code-inbound"
     },
     {
       "handler": {

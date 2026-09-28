@@ -1,4 +1,5 @@
 import type { ZuploContext, ZuploRequest } from "@zuplo/runtime";
+import { parseClaudeUser } from "./claude-user";
 
 /**
  * Logs who sent each Claude Code request and, for turns where a person typed
@@ -29,7 +30,6 @@ interface MessagesBody {
   model?: string;
   stream?: boolean;
   messages?: { role?: string; content?: string | ContentBlock[] }[];
-  metadata?: { user_id?: unknown };
 }
 
 const SYSTEM_REMINDER = /^\s*<system-reminder>[\s\S]*<\/system-reminder>\s*$/;
@@ -73,17 +73,7 @@ export default async function promptAuditLog(
     .filter((t) => !(excludeSystemReminders && SYSTEM_REMINDER.test(t)));
   const turn = texts.length > 0 ? "prompt" : "tool_result";
 
-  // Claude Code sends metadata.user_id as a JSON string holding the Claude
-  // account, device, and session IDs.
-  let claudeUser: { account_uuid?: unknown; device_id?: unknown } = {};
-  if (typeof body.metadata?.user_id === "string") {
-    try {
-      claudeUser = JSON.parse(body.metadata.user_id) ?? {};
-    } catch {
-      // Older clients send a non-JSON string; leave the IDs unset.
-    }
-  }
-  const str = (v: unknown) => (typeof v === "string" ? v : null);
+  const claudeUser = parseClaudeUser(body);
 
   let prompt: string | undefined;
   if (logPromptText && turn === "prompt") {
@@ -102,9 +92,9 @@ export default async function promptAuditLog(
     declaredUser: headers.get(userHeader),
     // The Claude account behind the forwarded login, as reported by the
     // client. Stable per person; map it to an email with accountDirectory.
-    claudeAccountUuid: str(claudeUser.account_uuid),
-    claudeAccountEmail: accountDirectory[str(claudeUser.account_uuid) ?? ""] ?? null,
-    claudeDeviceId: str(claudeUser.device_id),
+    claudeAccountUuid: claudeUser.accountUuid,
+    claudeAccountEmail: accountDirectory[claudeUser.accountUuid ?? ""] ?? null,
+    claudeDeviceId: claudeUser.deviceId,
     sessionId: headers.get("x-claude-code-session-id"),
     agentId: headers.get("x-claude-code-agent-id"),
     promptId: headers.get("x-claude-code-prompt-id"),
