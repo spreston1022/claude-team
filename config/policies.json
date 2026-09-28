@@ -268,7 +268,6 @@
         "export": "default",
         "module": "$import(./modules/prompt-audit-log)",
         "options": {
-          "userHeader": "x-user-id",
           "logPromptText": true,
           "maxPromptChars": 4000,
           "excludeSystemReminders": true,

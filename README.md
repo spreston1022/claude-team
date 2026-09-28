@@ -119,12 +119,10 @@ usage. Caveats:
 `prompt-audit-log-inbound` (`modules/prompt-audit-log.ts`) logs who sent each
 Claude Code request and, when a person typed a prompt, its text. Place it after
 the auth policy and after DLP, so it logs masked text. Each log entry records
-three identities:
+two identities:
 
 - `gatewayUser`: the Zuplo key that authenticated the request. It's verified,
   and it identifies a person when each person has their own app.
-- `declaredUser`: the `x-user-id` header (set with `ANTHROPIC_CUSTOM_HEADERS`).
-  It's unverified.
 - `claudeAccountUuid`: the Claude account ID that Claude Code sends in the
   request's `metadata.user_id`. It identifies the person behind a shared app
   key, but the client reports it and the gateway can't verify it. Requests

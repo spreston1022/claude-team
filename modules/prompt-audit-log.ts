@@ -9,8 +9,6 @@ import { parseClaudeUser } from "./claude-user";
  * The caller's Claude login in `Authorization` is never read or logged.
  */
 interface PromptAuditLogOptions {
-  /** Header with a self-declared user ID. Unverified: callers can set any value. */
-  userHeader?: string;
   /** Log the prompt text. Set false to log only identity and request metadata. */
   logPromptText?: boolean;
   /** Truncate logged prompt text to this many characters. */
@@ -41,7 +39,6 @@ export default async function promptAuditLog(
   policyName: string,
 ) {
   const {
-    userHeader = "x-user-id",
     logPromptText = true,
     maxPromptChars = 4000,
     excludeSystemReminders = true,
@@ -88,8 +85,6 @@ export default async function promptAuditLog(
     // Verified: the Zuplo key that authenticated this request. With one app
     // per person, this is the person.
     gatewayUser: request.user?.sub ?? null,
-    // Unverified: whatever the client put in the header.
-    declaredUser: headers.get(userHeader),
     // The Claude account behind the forwarded login, as reported by the
     // client. Stable per person; map it to an email with accountDirectory.
     claudeAccountUuid: claudeUser.accountUuid,
