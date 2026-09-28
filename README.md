@@ -45,6 +45,85 @@ Zuplo project before it can serve requests.
      }'
    ```
 
+## Claude Subscription Passthrough
+
+Claude Code can route through this gateway while still using a `claude.ai`
+subscription (Pro, Max, and so on) instead of an Anthropic API key. The gateway
+forwards the caller's `Authorization` header (their Claude login) to Anthropic
+and reads the Zuplo app key from a separate `zp-gateway-api-key` header, so the
+app's policies and metering still run.
+
+`config/policies.json` declares `ai-gateway-auth-v2-passthrough-inbound` for
+this. Its options are:
+
+```json
+{
+  "credentialPassthrough": true,
+  "authHeader": "zp-gateway-api-key",
+  "authScheme": ""
+}
+```
+
+1. In the Zuplo Portal, add `ai-gateway-auth-v2-passthrough-inbound` to the
+   Claude Code app's policy chain in place of `ai-gateway-auth-v2-inbound`.
+2. The Anthropic provider still needs an API key saved. Passthrough requests
+   don't use it, so a placeholder is fine unless a fallback model needs it.
+3. In `~/.claude/settings.json`, point Claude Code at the app. Don't set
+   `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_API_KEY`, because either one replaces
+   the Claude login:
+
+   ```json
+   {
+     "env": {
+       "ANTHROPIC_BASE_URL": "https://<gateway-host>/<app_id>",
+       "ANTHROPIC_CUSTOM_HEADERS": "zp-gateway-api-key: <app-api-key>",
+       "ANTHROPIC_MODEL": "anthropic/claude-sonnet-5",
+       "ANTHROPIC_SMALL_FAST_MODEL": "anthropic/claude-haiku-4-5",
+       "ANTHROPIC_DEFAULT_OPUS_MODEL": "anthropic/claude-opus-5",
+       "ANTHROPIC_DEFAULT_SONNET_MODEL": "anthropic/claude-sonnet-5",
+       "ANTHROPIC_DEFAULT_HAIKU_MODEL": "anthropic/claude-haiku-4-5",
+       "ANTHROPIC_DEFAULT_FABLE_MODEL": "anthropic/claude-fable-5-1"
+     }
+   }
+   ```
+
+4. Check it with `claude auth status --text` (it should report a `claude.ai`
+   login) and `claude -p "Reply with OK"`.
+
+To stop a runaway agent loop, `ai-gateway-metering-v2-inbound` gives every
+Claude Code session its own hourly budget. Claude Code sends
+`x-claude-code-session-id` on every request, and the policy warns at 300 and
+blocks at 600 requests per session per hour. It counts requests, not cost,
+because the gateway prices subscription traffic at API rates, which
+overstates what a subscription costs. Requests without the header skip this
+rule. A session isn't a person: restarting Claude Code starts a new session
+with a fresh budget, so use one app per user for per-person limits. Add the
+metering policy to the app's policy chain to turn this on.
+
+`prompt-audit-log-inbound` (`modules/prompt-audit-log.ts`) logs who sent each
+Claude Code request and, when a person typed a prompt, its text. Place it after
+the auth policy and after DLP, so it logs masked text. Each log entry records
+three identities:
+
+- `gatewayUser`: the Zuplo key that authenticated the request. It's verified,
+  and it identifies a person when each person has their own app.
+- `declaredUser`: the `x-user-id` header (set with `ANTHROPIC_CUSTOM_HEADERS`).
+  It's unverified.
+- `claudeAccountUuid`: the Claude account ID that Claude Code sends in the
+  request's `metadata.user_id`. It identifies the person behind a shared app
+  key, but the client reports it and the gateway can't verify it. Requests
+  carry only the ID, so list ID-to-email pairs in the `accountDirectory`
+  option to also log `claudeAccountEmail`. Each user's ID is `accountUuid`
+  under `oauthAccount` in their `~/.claude.json`.
+
+Tool-result turns are logged without their content. The `Authorization`
+header, which carries the user's Claude login, is never read or logged. Set
+`logPromptText` to `false` to log identity and metadata only.
+
+Token metering prices usage at API rates, so for subscription traffic it will
+overstate the real cost. See the
+[Claude Code integration guide](https://zuplo.com/docs/ai-gateway/integrations/claude-code#use-your-claude-subscription).
+
 ## Endpoints
 
 Every request is scoped to an app by the first path segment, `/{app_id}`. For
